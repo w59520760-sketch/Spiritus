@@ -1192,6 +1192,23 @@ def _subscription_json_config(
                     "mode": panel_settings.get("vless_xhttp_mode") or "auto",
                     "path": panel_settings.get("vless_xhttp_path") or "/xhttp",
                     "host": xhttp_reality_sni,
+                    "xPaddingBytes": "100-1000",
+                    "scMaxEachPostBytes": 1000000,
+                    "scMinPostsIntervalMs": 30,
+                    "noGRPCHeader": True,
+                    "extra": {
+                        "xPaddingBytes": "100-1000",
+                        "noGRPCHeader": True,
+                        "scMaxEachPostBytes": 1000000,
+                        "scMinPostsIntervalMs": 30,
+                        "xmux": {
+                            "maxConcurrency": "16-32",
+                            "maxConnections": 0,
+                            "cMaxReuseTimes": "64-128",
+                            "hMaxRequestTimes": "600-900",
+                            "hMaxReusableSecs": "1800-3000",
+                        },
+                    },
                 },
                 "realitySettings": {
                     "serverName": xhttp_reality_sni,
@@ -1340,17 +1357,28 @@ def _subscription_json_config(
     # Fragment and noise live on a freedom outbound that every proxy dials
     # through (sockopt.dialerProxy). Xray has no sockopt.fragment: settings
     # written there are ignored and the ClientHello goes out whole.
+    _aggression = str(panel_settings.get("dpi_aggression_level") or "medium").lower()
+    _want_frag = bool(
+        panel_settings.get("fragment_enabled")
+        or panel_settings.get("dpi_tls_fragment")
+        or panel_settings.get("dpi_tcp_fragment")
+        or panel_settings.get("dpi_ip_fragment")
+    )
+    _want_noise = bool(
+        panel_settings.get("noise_enabled")
+        or panel_settings.get("dpi_traffic_shape")
+        or panel_settings.get("dpi_fake_http")
+    )
     fragment_outbound = None
-    if panel_settings.get("fragment_enabled") or panel_settings.get("noise_enabled"):
+    if _want_frag or _want_noise:
         frag_settings: dict = {}
-        if panel_settings.get("fragment_enabled"):
+        if _want_frag:
             frag_settings["fragment"] = {
-                "packets": panel_settings.get("fragment_packets") or "tlshello",
-                "length": panel_settings.get("fragment_length") or "100-200",
-                "interval": panel_settings.get("fragment_interval") or "10-20",
+                "packets": panel_settings.get("fragment_packets") or ("1-3" if panel_settings.get("dpi_tcp_fragment") else "tlshello"),
+                "length": panel_settings.get("fragment_length") or ("10-30" if _aggression in ("high", "extreme") else "100-200"),
+                "interval": panel_settings.get("fragment_interval") or ("5-15" if _aggression in ("high", "extreme") else "10-20"),
             }
-        if panel_settings.get("noise_enabled"):
-            # "rand:50-100" is type:packet. Xray sends noise ahead of UDP only.
+        if _want_noise:
             ntype, sep, npacket = (panel_settings.get("noise_packet") or "rand:50-100").partition(":")
             if not sep:
                 ntype, npacket = "rand", ntype
@@ -1448,6 +1476,14 @@ def _subscription_json_config(
     outbounds.append({"tag": "block", "protocol": "blackhole"})
     return {
         "log": {"loglevel": "warning"},
+        "dns": {
+            "servers": [
+                "https://1.1.1.1/dns-query",
+                "https://8.8.8.8/dns-query",
+                "1.1.1.1",
+            ],
+            "queryStrategy": "UseIPv4",
+        },
         "inbounds": [
             {
                 "tag": "socks-in",
@@ -1455,6 +1491,11 @@ def _subscription_json_config(
                 "listen": "127.0.0.1",
                 "protocol": "socks",
                 "settings": {"udp": True},
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls", "quic", "fakedns"],
+                    "routeOnly": False,
+                },
             },
             {
                 "tag": "http-in",
@@ -1462,10 +1503,24 @@ def _subscription_json_config(
                 "listen": "127.0.0.1",
                 "protocol": "http",
                 "settings": {},
+                "sniffing": {
+                    "enabled": True,
+                    "destOverride": ["http", "tls", "quic", "fakedns"],
+                    "routeOnly": False,
+                },
             },
         ],
         "outbounds": outbounds,
-        "routing": {"domainStrategy": "AsIs", "rules": []},
+        "routing": {
+            "domainStrategy": "IPIfNonMatch",
+            "rules": [
+                {
+                    "type": "field",
+                    "ip": ["10.10.34.0/24"],
+                    "outboundTag": "block",
+                }
+            ],
+        },
         "remarks": f"V7LTHRONYX-{user.name}@{server_ip}",
     }
 

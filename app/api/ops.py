@@ -99,6 +99,7 @@ _PROTOCOLS: tuple[tuple[str, str, str | None, str, str, str | None], ...] = (
     ("shadowtls", "ShadowTLS v3", "shadowtls_enabled", "shadowtls_port", "tcp", "shadowtls_sni"),
     ("mieru", "Mieru", "mieru_enabled", "mieru_port", "tcp", None),
     ("naiveproxy", "NaiveProxy", "naiveproxy_enabled", "naiveproxy_port", "tcp", None),
+    ("anytls", "AnyTLS", "anytls_enabled", "anytls_port", "tcp", None),
     ("wireguard", "WireGuard", "wireguard_enabled", "wireguard_port", "udp", None),
     ("openvpn", "OpenVPN", "openvpn_enabled", "openvpn_port", "udp", None),
 )
@@ -119,7 +120,7 @@ _CDN_FRONTED = frozenset({"trojan_cdn"})
 # Probe protocol key -> evasion_rotation.ProtocolRotator key.
 _ROTATOR_ALIASES = {"vless_ws": "vless_ws_tls"}
 
-_SINGBOX_PROTOCOLS = frozenset({"hysteria2", "tuic", "shadowtls", "naiveproxy"})
+_SINGBOX_PROTOCOLS = frozenset({"hysteria2", "tuic", "shadowtls", "naiveproxy", "anytls", "amneziawg", "wireguard"})
 
 
 def _catalog(server_info: dict[str, Any], s: dict[str, Any]) -> list[dict[str, Any]]:
@@ -747,6 +748,31 @@ IR_CARRIERS = {
     "50810": "Mobinnet",
     "25184": "Afranet",
 }
+_IR_CARRIER_CIDRS: list[tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, str, str]] = [
+    (ipaddress.ip_network(cidr), asn, IR_CARRIERS[asn])
+    for cidr, asn in (
+        ("5.112.0.0/12", "197207"),
+        ("5.120.0.0/13", "197207"),
+        ("37.129.0.0/16", "197207"),
+        ("151.232.0.0/14", "197207"),
+        ("188.158.0.0/15", "197207"),
+        ("5.208.0.0/12", "44244"),
+        ("37.98.0.0/16", "44244"),
+        ("93.110.0.0/16", "44244"),
+        ("109.125.128.0/17", "44244"),
+        ("31.2.128.0/17", "57218"),
+        ("185.158.172.0/22", "57218"),
+        ("2.176.0.0/12", "58224"),
+        ("5.200.0.0/14", "58224"),
+        ("80.191.0.0/16", "58224"),
+        ("94.182.0.0/15", "31549"),
+        ("85.15.0.0/17", "31549"),
+        ("91.98.0.0/15", "16322"),
+        ("37.254.0.0/15", "43754"),
+        ("46.224.0.0/15", "50810"),
+        ("79.175.128.0/18", "25184"),
+    )
+]
 _CARRIER_CACHE: dict[str, tuple[float, str | None, str]] = {}
 _CARRIER_CACHE_TTL = 24 * 3600
 
@@ -763,6 +789,10 @@ async def _carrier_for_ip(ip: str) -> tuple[str | None, str]:
     cached = _CARRIER_CACHE.get(ip)
     if cached and time.time() - cached[0] < _CARRIER_CACHE_TTL:
         return cached[1], cached[2]
+    for net, asn, carrier in _IR_CARRIER_CIDRS:
+        if addr.version == net.version and addr in net:
+            _CARRIER_CACHE[ip] = (time.time(), asn, carrier)
+            return asn, carrier
     asn, carrier = None, "Unknown"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:

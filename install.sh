@@ -5,7 +5,10 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
+BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 BANNER='
@@ -31,11 +34,31 @@ WEB_PORT="${WEB_PORT:-38471}"
 # official Xray installer exits before it writes xray.service.
 export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${PATH}"
 
-print_banner() { echo -e "${CYAN}${BANNER}${NC}"; }
-print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-print_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+print_banner() {
+    echo -e "${CYAN}${BOLD}${BANNER}${NC}"
+    echo -e "  ${MAGENTA}${BOLD}⚡ SPIRITUS // V7LTHRONYX v${VERSION}${NC} ${DIM}— Anti-Censorship Multi-Engine Control Plane${NC}"
+    echo -e "  ${DIM}Engines: Xray-core (REALITY/XHTTP/Vision) · sing-box (Hy2/TUIC/AnyTLS/AWG/ShadowTLS/Naive) · Mieru${NC}"
+    echo -e "${CYAN}  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+}
+print_info() { echo -e "  ${BLUE}ℹ${NC}  $1"; }
+print_success() { echo -e "  ${GREEN}✔${NC}  $1"; }
+print_warning() { echo -e "  ${YELLOW}⚠${NC}  $1"; }
+print_error() { echo -e "  ${RED}✖${NC}  $1"; }
+print_step() {
+    local step="$1"
+    local total="$2"
+    local title="$3"
+    local filled=$(( step * 20 / total ))
+    local empty=$(( 20 - filled ))
+    local bar=""
+    for ((_i=0; _i<filled; _i++)); do bar+="█"; done
+    for ((_i=0; _i<empty; _i++)); do bar+="░"; done
+    local pct=$(( step * 100 / total ))
+    echo ""
+    echo -e "${CYAN}┌──────────────────────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${CYAN}│${NC} ${BOLD}[${bar}] ${pct}%${NC}  ${MAGENTA}Step ${step}/${total}:${NC} ${BOLD}${title}${NC}"
+    echo -e "${CYAN}└──────────────────────────────────────────────────────────────────────────────┘${NC}"
+}
 
 check_root() {
     if [[ $EUID -ne 0 ]]; then
@@ -1330,6 +1353,70 @@ EOF
     print_success "Auto-update configured (daily check at 4:00 AM)"
 }
 
+install_cli_tool() {
+    local cli="/usr/local/bin/spiritus"
+    cat > "$cli" << CLIEOF
+set -e
+INSTALL_DIR="${INSTALL_DIR}"
+SERVICE_NAME="${SERVICE_NAME}"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+cmd="\${1:-status}"
+case "\$cmd" in
+    status)
+        echo -e "\${CYAN}\${BOLD}═══ Spiritus Control Plane & Engine Status ═══\${NC}"
+        for svc in "\$SERVICE_NAME" "\${SERVICE_NAME}-worker" "\${SERVICE_NAME}-beat" v7lthronyx-helper xray sing-box mita postgresql redis-server; do
+            if systemctl is-active --quiet "\$svc" 2>/dev/null; then
+                echo -e "  \${GREEN}●\${NC} \$(printf '%-22s' "\$svc") \${GREEN}ACTIVE\${NC}"
+            else
+                echo -e "  \${YELLOW}○\${NC} \$(printf '%-22s' "\$svc") \${YELLOW}INACTIVE\${NC}"
+            fi
+        done
+        ;;
+    restart)
+        systemctl restart v7lthronyx-helper "\$SERVICE_NAME" "\${SERVICE_NAME}-worker" "\${SERVICE_NAME}-beat"
+        systemctl try-restart xray sing-box mita 2>/dev/null || true
+        echo -e "\${GREEN}✔ All Spiritus services and proxy engines restarted.\${NC}"
+        ;;
+    start)
+        systemctl start v7lthronyx-helper "\$SERVICE_NAME" "\${SERVICE_NAME}-worker" "\${SERVICE_NAME}-beat"
+        echo -e "\${GREEN}✔ Spiritus services started.\${NC}"
+        ;;
+    stop)
+        systemctl stop "\$SERVICE_NAME" "\${SERVICE_NAME}-worker" "\${SERVICE_NAME}-beat"
+        echo -e "\${YELLOW}⚠ Spiritus panel stopped.\${NC}"
+        ;;
+    logs)
+        journalctl -u "\$SERVICE_NAME" -u v7lthronyx-helper -f -n 50
+        ;;
+    update)
+        /usr/local/sbin/spiritus-auto-update
+        echo -e "\${GREEN}✔ Update check completed.\${NC}"
+        ;;
+    reset-password)
+        shift || true
+        bash "\${INSTALL_DIR}/install.sh" reset-password "\$@"
+        ;;
+    uninstall)
+        shift || true
+        bash "\${INSTALL_DIR}/install.sh" uninstall "\$@"
+        ;;
+    *)
+        echo -e "\${CYAN}\${BOLD}Spiritus CLI Management Tool\${NC}"
+        echo -e "Usage: \${BOLD}spiritus\${NC} [status|restart|start|stop|logs|update|reset-password|uninstall]"
+        ;;
+esac
+CLIEOF
+    chmod 755 "$cli"
+    ln -sf "$cli" /usr/local/bin/v7lthronyx
+    print_success "CLI shortcut installed: run 'spiritus' or 'spiritus status' anytime"
+}
+
 open_firewall_port() {
     # The Fail2ban + per-IP rate limiter + CSRF middleware harden the public
     # bind, but if the host has a firewall up the port still has to be open.
@@ -1398,57 +1485,59 @@ start_panel() {
 }
 
 show_info() {
-    # Pull the one-shot bootstrap password from the .env, then hint that it
-    # should be removed after the first login.
     PANEL_PASSWORD=$(grep '^ADMIN_BOOTSTRAP_PASSWORD=' "${INSTALL_DIR}/.env" 2>/dev/null | cut -d= -f2- || true)
     if [[ -z "$PANEL_PASSWORD" ]]; then
-        PANEL_PASSWORD="(consumed — change at /change-password)"
+        PANEL_PASSWORD="(consumed — run: spiritus reset-password)"
     fi
 
-    echo ""
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Spiritus VPN Panel v${VERSION} - installation complete${NC}"
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
-    echo ""
     HEALTH_STATUS=$(cat /tmp/vpn_panel_health_status 2>/dev/null || echo "Failed")
     if [[ "$HEALTH_STATUS" == "OK" ]]; then
-        HEALTH_MSG="${GREEN}✔ Web Application is UP and Healthy${NC}"
+        HEALTH_MSG="${GREEN}${BOLD}● ONLINE & HEALTHY${NC}"
     else
-        HEALTH_MSG="${RED}✖ Web Application Failed to Start (Check logs)${NC}"
+        HEALTH_MSG="${RED}${BOLD}✖ FAILED (check: spiritus logs)${NC}"
     fi
 
+    local xray_st="${YELLOW}○ Standby${NC}"
+    systemctl is-active --quiet xray 2>/dev/null && xray_st="${GREEN}● Active${NC}"
+    local sb_st="${YELLOW}○ Standby${NC}"
+    systemctl is-active --quiet sing-box 2>/dev/null && sb_st="${GREEN}● Active${NC}"
+    local mita_st="${YELLOW}○ Standby${NC}"
+    systemctl is-active --quiet mita 2>/dev/null && mita_st="${GREEN}● Active${NC}"
+
     local panel_host="${PUBLIC_IP:-$(detect_public_ip)}"
-    echo -e "  ${YELLOW}Open in your browser:${NC} http://${panel_host}:${WEB_PORT}"
-    echo -e "  ${YELLOW}Username:${NC}             admin"
-    echo -e "  ${YELLOW}Password:${NC}             ${PANEL_PASSWORD}"
-    echo -e "  ${YELLOW}TLS certificate:${NC}      ${CERT_KIND:-self-signed (links pin it; no 'allow insecure' needed)}"
+    local scheme="https"
+    if ! curl -sk "https://127.0.0.1:${WEB_PORT}/api/health" 2>/dev/null | grep -q "healthy"; then
+        scheme="http"
+    fi
+
     echo ""
-    echo -e "  ${GREEN}Next steps${NC}"
-    echo -e "    1. Sign in and change the password (Settings → System)."
-    echo -e "    2. Users → Add user, then send the user's subscription link."
-    echo -e "    3. They paste it into v2rayNG, Hiddify, Streisand or v2rayN and connect."
-    echo -e "       REALITY configs need no domain and no certificate."
-    echo -e "  ${BLUE}Forgot the password?${NC}  sudo bash install.sh reset-password"
+    echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}  ${GREEN}${BOLD}✔ SPIRITUS VPN CONTROL PLANE v${VERSION} — INSTALLATION COMPLETE${NC}                 ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}ACCESS CREDENTIALS${NC}                                                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${YELLOW}Panel URL:${NC}        ${BOLD}${scheme}://${panel_host}:${WEB_PORT}${NC}"
+    echo -e "${CYAN}║${NC}    ${YELLOW}Username:${NC}         ${BOLD}admin${NC}"
+    echo -e "${CYAN}║${NC}    ${YELLOW}Password:${NC}         ${BOLD}${PANEL_PASSWORD}${NC}"
+    echo -e "${CYAN}║${NC}    ${YELLOW}TLS Certificate:${NC}  ${CERT_KIND:-Self-signed SHA-256 pinned}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}ENGINE & CORE TELEMETRY${NC}                                                     ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    Web Control Plane : ${HEALTH_MSG}"
+    echo -e "${CYAN}║${NC}    Xray-core Engine  : ${xray_st}  ${DIM}(VLESS-Reality, XHTTP, Vision, VMess, Trojan, SS2022)${NC}"
+    echo -e "${CYAN}║${NC}    sing-box Engine   : ${sb_st}  ${DIM}(Hysteria2, TUIC v5, AnyTLS, AmneziaWG, ShadowTLS, Naive)${NC}"
+    echo -e "${CYAN}║${NC}    Mieru Engine      : ${mita_st}  ${DIM}(TCP/UDP Multiplexed ChaCha20/AES-GCM Obfuscation)${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}QUICK TERMINAL COMMANDS (CLI)${NC}                                               ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus status${NC}          Show live status of all panel & proxy engines    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus restart${NC}         Restart panel, helper, Xray, sing-box, and Mieru ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus logs${NC}            Stream real-time panel & helper logs             ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus reset-password${NC}  Generate a new admin password (--disable-2fa)    ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus update${NC}          Pull latest updates and restart services         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${GREEN}spiritus uninstall${NC}       Stop and remove panel (--purge to drop DB)       ${CYAN}║${NC}"
+    echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}ONE-LINE INSTALL / UPDATE COMMAND:${NC}                                          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}    ${DIM}curl -fsSL https://raw.githubusercontent.com/v74all/Spiritus/main/install.sh | sudo bash${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "  ${RED}IMPORTANT:${NC} after first login, change the password in the panel,"
-    echo -e "             then remove ADMIN_BOOTSTRAP_PASSWORD from .env and restart."
-    echo ""
-    echo -e "  ${YELLOW}System Health:${NC} ${HEALTH_MSG}"
-    echo -e "  ${YELLOW}Config Dir:${NC}    ${INSTALL_DIR}"
-    echo -e "  ${YELLOW}Logs:${NC}         journalctl -u ${SERVICE_NAME} -f"
-    echo -e "  ${YELLOW}Database:${NC}     PostgreSQL (vpnpanel)"
-    echo -e "  ${YELLOW}Cache:${NC}        Redis (localhost:6379)"
-    echo -e "  ${YELLOW}Services:${NC}     ${SERVICE_NAME} + ${SERVICE_NAME}-worker + ${SERVICE_NAME}-beat"
-    echo -e "  ${YELLOW}Auto Update:${NC}   Daily at 4:00 AM"
-    echo ""
-    echo -e "  ${BLUE}Commands:${NC}"
-    echo -e "    ${GREEN}Start:${NC}    systemctl start ${SERVICE_NAME}"
-    echo -e "    ${GREEN}Stop:${NC}     systemctl stop ${SERVICE_NAME}"
-    echo -e "    ${GREEN}Restart:${NC}  systemctl restart ${SERVICE_NAME}"
-    echo -e "    ${GREEN}Logs:${NC}     journalctl -u ${SERVICE_NAME} -f"
-    echo -e "    ${GREEN}Update:${NC}   /usr/local/sbin/spiritus-auto-update"
-    echo ""
-    echo -e "${CYAN}═══════════════════════════════════════════════════════════${NC}"
 }
 
 reset_password() {
@@ -1554,64 +1643,52 @@ USAGE
 
 main() {
     print_banner
-    echo -e "${YELLOW}  V7LTHRONYX v${VERSION} - Easy Installer${NC}"
-    echo -e "${YELLOW}  Web port: ${WEB_PORT}${NC}"
+    echo -e "  ${YELLOW}Target Directory:${NC} ${INSTALL_DIR}   ${YELLOW}Web Port:${NC} ${WEB_PORT}"
     echo ""
 
     check_root
     check_os
     
-    echo -e "${CYAN}[1/13]${NC} Installing system dependencies..."
+    print_step 1 13 "Installing system packages & kernel modules"
     install_dependencies
     PUBLIC_IP=$(detect_public_ip)
-    print_info "Public IP: ${PUBLIC_IP:-unknown}"
+    print_info "Detected Public IP: ${PUBLIC_IP:-unknown}"
     
-    echo -e "${CYAN}[2/13]${NC} Installing Xray..."
+    print_step 2 13 "Installing proxy engines (Xray-core, sing-box, Mieru, ACME)"
     install_xray
     install_singbox
     install_mieru
     install_acme
     setup_traffic_modules
 
-    echo -e "${CYAN}[3/13]${NC} Downloading V7LTHRONYX..."
+    print_step 3 13 "Fetching Spiritus repository (${INSTALL_DIR})"
     clone_or_update
     
-    echo -e "${CYAN}[4/13]${NC} Setting up PostgreSQL..."
+    print_step 4 13 "Configuring PostgreSQL database"
     setup_postgresql
     
-    echo -e "${CYAN}[5/13]${NC} Setting up Redis..."
+    print_step 5 13 "Configuring Redis in-memory store"
     setup_redis
     
-    echo -e "${CYAN}[6/13]${NC} Setting up Python environment..."
+    print_step 6 13 "Building isolated Python virtual environment"
     setup_python
 
-    echo -e "${CYAN}[7/13]${NC} Creating unprivileged service user..."
+    print_step 7 13 "Creating unprivileged service account & permissions"
     setup_panel_user
 
-    echo -e "${CYAN}[8/13]${NC} Generating self-signed TLS cert..."
+    print_step 8 13 "Generating cryptographic TLS certificates"
     setup_tls_cert
-
-    echo -e "${CYAN}[9a/13]${NC} Prompting for domain (optional)..."
     prompt_domain || true
     setup_ip_certificate || true
 
-    echo -e "${CYAN}[9/13]${NC} Setting up environment config..."
+    print_step 9 13 "Writing hardened .env & Fail2ban brute-force jails"
     setup_env
-
-    # setup_fail2ban MUST run after both setup_python (needs the venv's
-    # sqlalchemy etc.) AND setup_env (app.config.Settings() validates
-    # SECRET_KEY etc. at import time — `from app.security import
-    # fail2ban_manager` fails with a pydantic "field required" error
-    # until .env exists). It used to run as step 6/13, before either
-    # precondition was met, so the jail install always failed and every
-    # fresh install silently shipped with NO fail2ban brute-force jails.
-    echo -e "${CYAN}[9b/13]${NC} Setting up Fail2ban..."
     setup_fail2ban
 
-    echo -e "${CYAN}[10/13]${NC} Applying database migrations..."
+    print_step 10 13 "Applying Alembic database migrations"
     run_migrations
 
-    echo -e "${CYAN}[11/13]${NC} Configuring services..."
+    print_step 11 13 "Registering systemd units & privilege-separated helper"
     configure_systemd
 
     systemctl restart v7lthronyx-helper
@@ -1619,17 +1696,14 @@ main() {
         [[ -S /run/v7lthronyx/helper.sock ]] && break
         sleep 0.25
     done
-    echo -e "${CYAN}[11b/13]${NC} Applying domain to panel database..."
     apply_domain_on_install || true
 
-    echo -e "${CYAN}[12/13]${NC} Setting up auto-update..."
+    print_step 12 13 "Installing Spiritus CLI tool & daily auto-updater"
     setup_auto_update
-
-    # Root ran the app above (migrations, domain): hand the panel its data
-    # files again and keep everything else root's.
+    install_cli_tool
     secure_install_tree
 
-    echo -e "${CYAN}[13/13]${NC} Starting panel..."
+    print_step 13 13 "Starting Spiritus Control Plane & running health checks"
     start_panel
 
     show_info

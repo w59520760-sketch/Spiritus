@@ -97,6 +97,7 @@ _PROTOCOL_ENABLE_KEYS = {
     "shadowtls_enabled",
     "mieru_enabled",
     "naiveproxy_enabled",
+    "anytls_enabled",
     "wireguard_enabled",
     "openvpn_enabled",
 }
@@ -392,14 +393,30 @@ def _build_share_links(u: VpnUser, server_ip: str | None = None) -> dict[str, st
     _vmess_tls_sni = server_ip if _ip_cert else ""
 
     # ── DPI Evasion common flags ──
-    _frag = bool(_settings_state.get("fragment_enabled"))
-    _frag_pkt = _settings_state.get("fragment_packets") or "tlshello"
-    _frag_len = _settings_state.get("fragment_length") or "100-200"
-    _frag_int = _settings_state.get("fragment_interval") or "10-20"
-    _noise_pkt = _settings_state.get("noise_packet") or ""
-    _noise_del = _settings_state.get("noise_delay") or ""
-    _keepalive = bool(_settings_state.get("dpi_tcp_keepalive"))
-    _mux = bool(_settings_state.get("mux_enabled"))
+    _aggression = str(_settings_state.get("dpi_aggression_level") or "medium").lower()
+    _frag = bool(
+        _settings_state.get("fragment_enabled")
+        or _settings_state.get("dpi_tls_fragment")
+        or _settings_state.get("dpi_tcp_fragment")
+        or _settings_state.get("dpi_ip_fragment")
+        or _aggression in ("high", "extreme")
+    )
+    if _settings_state.get("dpi_tcp_fragment") or _aggression == "extreme":
+        _frag_pkt = _settings_state.get("fragment_packets") or "1-3"
+        _frag_len = _settings_state.get("fragment_length") or "10-30"
+        _frag_int = _settings_state.get("fragment_interval") or "5-15"
+    else:
+        _frag_pkt = _settings_state.get("fragment_packets") or "tlshello"
+        _frag_len = _settings_state.get("fragment_length") or "100-200"
+        _frag_int = _settings_state.get("fragment_interval") or "10-20"
+    _noise_pkt = _settings_state.get("noise_packet") or (
+        "rand:50-100"
+        if (_settings_state.get("dpi_traffic_shape") or _settings_state.get("dpi_fake_http") or _aggression in ("high", "extreme"))
+        else ""
+    )
+    _noise_del = _settings_state.get("noise_delay") or ("10-20" if _noise_pkt else "")
+    _keepalive = bool(_settings_state.get("dpi_tcp_keepalive") or _aggression in ("high", "extreme"))
+    _mux = bool(_settings_state.get("mux_enabled") or _settings_state.get("dpi_multi_path"))
     _mux_conc = int(_settings_state.get("mux_concurrency") or 8)
     _bug_host = ""
     if _settings_state.get("dpi_bug_host_enabled"):
@@ -699,6 +716,31 @@ def _build_share_links(u: VpnUser, server_ip: str | None = None) -> dict[str, st
 
         links["wireguard"] = wireguard_client_conf(_settings_state, u, server_ip) or ""
 
+    if _settings_state.get("amneziawg_enabled") and _singbox and server_ip:
+        from ...standalone_engines import amneziawg_client_conf
+
+        links["amneziawg"] = amneziawg_client_conf(_settings_state, u, server_ip) or ""
+
+    if _settings_state.get("anytls_enabled") and _singbox and _cert:
+        try:
+            label = urllib.parse.quote(f"V7LTHRONYX-AnyTLS-{u.name}")
+            _anytls_params = {
+                "sni": _tls_sni,
+                "fp": _settings_state.get("fingerprint") or "chrome",
+            }
+            if not _ip_cert:
+                _pin = trust_for(sni_host, server_ip, _cert).pin_colon
+                if _pin:
+                    _anytls_params["pinSHA256"] = _pin
+            anytls_pw = urllib.parse.quote(_creds["anytls"]["password"], safe="")
+            links["anytls"] = (
+                f"anytls://{anytls_pw}@{server_ip}:{_st['anytls_port']}"
+                f"?{urllib.parse.urlencode(_anytls_params)}#{label}"
+            )
+        except Exception:
+            logger.warning("Failed to build %s share link", "anytls", exc_info=False)
+            links["anytls"] = ""
+
     # Mieru: the official "simple" link (`mieru import config <url>`).
     if _settings_state.get("mieru_enabled") and engine_installed("mita"):
         try:
@@ -951,6 +993,9 @@ def _default_legacy_settings() -> dict[str, Any]:
         "mieru_port": 8446,
         "naiveproxy_enabled": False,
         "naiveproxy_port": 8447,
+        "anytls_enabled": False,
+        "anytls_port": 8448,
+        "anytls_sni": "www.aparat.com",
         "wireguard_enabled": False,
         "wireguard_port": 51821,
         "openvpn_enabled": False,

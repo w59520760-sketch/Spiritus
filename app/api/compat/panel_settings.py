@@ -133,6 +133,9 @@ async def legacy_get_settings(
         # NaiveProxy
         "naiveproxy_enabled": False,
         "naiveproxy_port": 8447,
+        "anytls_enabled": False,
+        "anytls_port": 8448,
+        "anytls_sni": "www.aparat.com",
         # WireGuard
         "wireguard_enabled": False,
         "wireguard_port": 51821,
@@ -378,6 +381,10 @@ def _generate_xray_server_config(
                     "mode": s.get("vless_xhttp_mode") or "auto",
                     "path": s.get("vless_xhttp_path") or "/xhttp",
                     "host": xhttp_sni,
+                    "xPaddingBytes": "100-1000",
+                    "scMaxEachPostBytes": 1000000,
+                    "scMinPostsIntervalMs": 30,
+                    "noGRPCHeader": True,
                 },
                 "realitySettings": {
                     "serverNames": [xhttp_sni],

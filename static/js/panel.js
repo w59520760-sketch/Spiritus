@@ -371,6 +371,7 @@ function updateProtoBar() {
     ['pb-shadowtls', 'shadowtls', 'STLS:', 'shadowtls_port', 8445],
     ['pb-mieru', 'mieru', 'Mieru:', 'mieru_port', 8446],
     ['pb-naiveproxy', 'naiveproxy', 'Naive:', 'naiveproxy_port', 8447],
+    ['pb-anytls', 'anytls', 'AnyTLS:', 'anytls_port', 8448],
     ['pb-wireguard', 'wireguard', 'WG:', 'wireguard_port', 51821],
     ['pb-openvpn', 'openvpn', 'OVPN:', 'openvpn_port', 1194],
   ];
@@ -515,8 +516,11 @@ function renderUsers() {
     grid.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">No users match this filter</div></div>';
     return;
   }
+  const isFa = document.documentElement.dir === 'rtl';
   grid.innerHTML = '<div class="tactical-table-wrapper"><table class="tactical-table ui-users-table"><thead><tr>'
-    + '<th>User</th><th>Bandwidth quota</th><th>Validity</th><th>Live speed</th><th>Status</th><th class="ui-th-end">Actions</th>'
+    + (isFa
+      ? '<th>کاربر</th><th>سقف ترافیک</th><th>اعتبار زمانی</th><th>سرعت لحظه‌ای</th><th>وضعیت</th><th class="ui-th-end">عملیات</th>'
+      : '<th>User</th><th>Bandwidth quota</th><th>Validity</th><th>Live speed</th><th>Status</th><th class="ui-th-end">Actions</th>')
     + '</tr></thead><tbody>' + filtered.map(userRow).join('') + '</tbody></table></div>';
 }
 
@@ -1116,7 +1120,9 @@ function showConfig(name) {
       ? !!(serverInfo.shadowtls_enabled && serverInfo.engines && serverInfo.engines['sing-box'])
       : key === 'naiveproxy'
         ? !!(u.naiveproxy || (serverInfo.naiveproxy_enabled && serverInfo.engines && serverInfo.engines['sing-box']))
-        : !!u[CONFIG_LINK_FIELD[key] || key];
+        : key === 'anytls'
+          ? !!(u.anytls || (serverInfo.anytls_enabled && serverInfo.engines && serverInfo.engines['sing-box']))
+          : !!u[CONFIG_LINK_FIELD[key] || key];
     t.style.display = on ? '' : 'none';
     if (on) visible.push(key);
   });
@@ -1323,6 +1329,23 @@ function renderConfigTab() {
       <span class="ck">Server</span><span class="cv">${SERVER_INFO.ip}</span>
       <span class="ck">Port</span><span class="cv">${serverInfo.naiveproxy_port || 8447}</span>
       <span class="ck">TLS</span><span class="cv">Chrome TLS Fingerprint</span>`;
+  } else if (configTab === 'anytls') {
+    link = u.anytls || (location.origin + '/sub-singbox/' + u.uuid);
+    label = u.anytls ? 'AnyTLS Link' : 'sing-box subscription (AnyTLS is inside)';
+    info = `
+      <span class="ck">Protocol</span><span class="cv" style="color:#a855f7">AnyTLS (Chameleon Padding)</span>
+      <span class="ck">Server</span><span class="cv">${SERVER_INFO.ip}</span>
+      <span class="ck">Port</span><span class="cv">${serverInfo.anytls_port || 8448}</span>
+      <span class="ck">SNI</span><span class="cv">${esc(serverInfo.anytls_sni || SERVER_INFO.sni || '')}</span>
+      <span class="ck">Import in</span><span class="cv">sing-box 1.12+, NekoBox, Hiddify, Clash Meta / mihomo</span>`;
+  } else if (configTab === 'amneziawg') {
+    link = u.amneziawg || '';
+    label = 'AmneziaWG 2.0 Config';
+    info = `
+      <span class="ck">Protocol</span><span class="cv" style="color:#22c55e">AmneziaWG 2.0 (Obfuscated WireGuard)</span>
+      <span class="ck">Server</span><span class="cv">${SERVER_INFO.ip}</span>
+      <span class="ck">Port</span><span class="cv">${serverInfo.amneziawg_port || 51820}</span>
+      <span class="ck">Import in</span><span class="cv">AmneziaVPN / AmneziaWG client or sing-box subscription</span>`;
   } else if (configTab === 'wireguard') {
     link = u.wireguard || '';
     label = 'WireGuard Config';
@@ -1714,6 +1737,7 @@ function updateSettingsStatus() {
   set('si-shadowtls', si.shadowtls_enabled, si.shadowtls_enabled ? 'Active :' + (si.shadowtls_port || 8445) : 'OFF');
   set('si-mieru', si.mieru_enabled, si.mieru_enabled ? 'Active :' + (si.mieru_port || 8446) : 'OFF');
   set('si-naiveproxy', si.naiveproxy_enabled, si.naiveproxy_enabled ? 'Active :' + (si.naiveproxy_port || 8447) : 'OFF');
+  set('si-anytls', si.anytls_enabled, si.anytls_enabled ? 'Active :' + (si.anytls_port || 8448) : 'OFF');
   set('si-wireguard', si.wireguard_enabled, si.wireguard_enabled ? 'Active :' + (si.wireguard_port || 51821) : 'OFF');
   set('si-openvpn', si.openvpn_enabled, si.openvpn_enabled ? 'Active :' + (si.openvpn_port || 1194) : 'OFF');
   set('si-cdn', si.cdn_enabled, si.cdn_enabled ? 'Active — ' + (si.cdn_domain || '?') : 'OFF');
@@ -1875,6 +1899,12 @@ async function loadSettings() {
     document.getElementById('set-naiveproxy-password').value = s.naiveproxy_password || '';
     document.getElementById('set-naiveproxy-sni').value = s.naiveproxy_sni || '';
     document.getElementById('set-naiveproxy-concurrency').value = s.naiveproxy_concurrency || 4;
+    if (document.getElementById('set-anytls')) {
+      document.getElementById('set-anytls').checked = s.anytls_enabled || false;
+      document.getElementById('set-anytls-port').value = s.anytls_port || 8448;
+      document.getElementById('set-anytls-password').value = s.anytls_password || '';
+      document.getElementById('set-anytls-sni').value = s.anytls_sni || 'www.Speedtest.net';
+    }
     // WireGuard
     document.getElementById('set-wireguard').checked = s.wireguard_enabled || false;
     document.getElementById('set-wireguard-port').value = s.wireguard_port || 51821;
@@ -1985,6 +2015,7 @@ async function resetSettingsToDefault() {
     'set-shadowtls': false, 'set-shadowtls-port': '8445', 'set-shadowtls-sni': 'rubika.ir',
     'set-mieru': false, 'set-mieru-port': '8446', 'set-mieru-encryption': 'aes-256-gcm', 'set-mieru-transport': 'tcp', 'set-mieru-mux-concurrency': '8',
     'set-naiveproxy': false, 'set-naiveproxy-port': '8447', 'set-naiveproxy-concurrency': '4',
+    'set-anytls': false, 'set-anytls-port': '8448', 'set-anytls-password': '', 'set-anytls-sni': 'www.Speedtest.net',
     'set-wireguard': false, 'set-wireguard-port': '51821', 'set-wireguard-address': '10.9.0.1/16', 'set-wireguard-dns': '1.1.1.1', 'set-wireguard-mtu': '1280',
     'set-openvpn': false, 'set-openvpn-port': '1194', 'set-openvpn-proto': 'udp', 'set-openvpn-network': '10.10.0.0/24', 'set-openvpn-dns': '1.1.1.1',
     'set-fingerprint': 'chrome', 'set-noise': false, 'set-noise-packet': 'rand:50-100', 'set-noise-delay': '10-20',
@@ -2140,6 +2171,10 @@ async function saveSettings() {
     naiveproxy_password: document.getElementById('set-naiveproxy-password').value.trim(),
     naiveproxy_sni: document.getElementById('set-naiveproxy-sni').value.trim(),
     naiveproxy_concurrency: parseInt(document.getElementById('set-naiveproxy-concurrency').value) || 4,
+    anytls_enabled: document.getElementById('set-anytls')?.checked || false,
+    anytls_port: parseInt(document.getElementById('set-anytls-port')?.value) || 8448,
+    anytls_password: (document.getElementById('set-anytls-password')?.value || '').trim(),
+    anytls_sni: (document.getElementById('set-anytls-sni')?.value || '').trim() || 'www.Speedtest.net',
     // WireGuard
     wireguard_enabled: document.getElementById('set-wireguard').checked,
     wireguard_port: parseInt(document.getElementById('set-wireguard-port').value) || 51821,
@@ -2267,6 +2302,8 @@ function showSettingsValidation(data) {
   else warn('Mieru — OFF');
   if (data.naiveproxy_enabled) ok('NaiveProxy — Active on port ' + data.naiveproxy_port);
   else warn('NaiveProxy — OFF');
+  if (data.anytls_enabled) ok('AnyTLS — Active on port ' + data.anytls_port);
+  else warn('AnyTLS — OFF');
   if (data.wireguard_enabled) ok('WireGuard — Active on port ' + data.wireguard_port);
   else warn('WireGuard — OFF');
   if (data.openvpn_enabled) ok('OpenVPN — Active on port ' + data.openvpn_port);
@@ -4147,7 +4184,78 @@ document.addEventListener('DOMContentLoaded', function() {
   try { saved = localStorage.getItem('spiritus_theme') || 'obsidian'; } catch (e) {}
   switchTheme(saved);
   setupLoginForm();
+  applyLocalization();
 });
+
+function applyLocalization() {
+  const isFa = document.documentElement.dir === 'rtl';
+  document.documentElement.lang = isFa ? 'fa' : 'en';
+  document.querySelectorAll('.lang-switch-label').forEach(el => {
+    el.textContent = isFa ? 'English' : 'فارسی';
+  });
+  if (!isFa) return;
+  const navMap = {
+    overview: 'مرکز فرماندهی',
+    warroom: 'اتاق وضعیت و ترافیک',
+    protocols: 'موتور پروتکل‌ها و DPI',
+    routing: 'مسیریابی هوشمند اپراتورها',
+    sentinel: 'پروب‌های سنتینل (ایران)',
+    nodes: 'نودهای لبه (Edge)',
+    tenants: 'مشترکین و اشتراک‌ها',
+    carriers: 'تحلیل اپراتورهای ایران',
+    financials: 'امور مالی و درگاه‌ها',
+    security: 'امنیت و زنجیره ممیزی',
+    settings: 'تنظیمات هسته و پروتکل‌ها',
+    agents: 'مدیریت نمایندگان فروش',
+    online: 'کاربران آنلاین لحظه‌ای',
+    backup: 'پشتیبان‌گیری و بازیابی'
+  };
+  Object.keys(navMap).forEach(k => {
+    const btn = document.querySelector('.tactical-nav-item[data-op-tab="' + k + '"] span:nth-of-type(2)');
+    if (btn) btn.textContent = navMap[k];
+  });
+  const groupLabels = document.querySelectorAll('.tactical-nav-group-label');
+  const groupFa = ['عملیات و شبکه', 'مشترکین و تحلیل', 'مدیریت سیستم'];
+  groupLabels.forEach((el, idx) => { if (groupFa[idx]) el.textContent = groupFa[idx]; });
+  const viewTitles = {
+    'op-view-overview': ['وضعیت لحظه‌ای سرویس', 'مرکز فرماندهی و سلامت هسته‌ها', 'نمای کلی کاربران، وضعیت موتورهای Xray / sing-box / Mieru و نرخ موفقیت اتصال اپراتورهای ایران در ۲۴ ساعت گذشته.'],
+    'op-view-warroom': ['ترافیک و مصرف شبکه', 'اتاق وضعیت و مانیتورینگ زنده', 'رصد لحظه‌ای پهنای باند، مصرف منابع سرور (CPU/RAM/Disk) و پرمصرف‌ترین مشترکین.'],
+    'op-view-protocols': ['هسته‌های ضد فیلترینگ', 'موتور پروتکل‌ها و ضد DPI', 'فعال‌سازی یا غیرفعال‌سازی مستقیم هر پروتکل، بررسی پورت و باینری هسته، و همگام‌سازی آنی کانفیگ‌ها.'],
+    'op-view-routing': ['مسیریابی تطبیقی', 'مسیریابی هوشمند اپراتورهای ایران', 'انتخاب خودکار بهترین پروتکل برای همراه اول، ایرانسل، رایتل و مخابرات بر اساس گزارش پروب‌ها.'],
+    'op-view-sentinel': ['سنسورهای داخل شبکه ایران', 'پروب‌های سنتینل (Sentinel)', 'ثبت و مدیریت اسکریپت‌های سبک تست اتصال در داخل ایران برای سنجش واقعی فیلترینگ هر اپراتور.'],
+    'op-view-nodes': ['معماری چند سروری', 'نودهای لبه (Edge Nodes)', 'مدیریت سرورهای میانی، تانل‌های معکوس و توزیع بار بین سرورهای خارج و داخل.'],
+    'op-view-carriers': ['تحلیل کیفیت اتصال', 'تشخیص و آنالیز اپراتورهای ایران', 'بررسی نرخ موفقیت، پینگ و پایداری هر پروتکل به تفکیک ISP در بازه‌های زمانی مختلف.'],
+    'op-view-financials': ['حسابداری و تراکنش‌ها', 'امور مالی، درگاه‌ها و نمایندگان', 'گزارش پرداخت‌های ریالی و تتری (USDT)، وضعیت درگاه‌های پرداخت و تراز مالی نمایندگان.'],
+    'op-view-security': ['حفاظت و لاگ تغییرناپذیر', 'امنیت، احراز هویت و زنجیره ممیزی', 'بررسی صحت زنجیره هش لاگ‌ها (SHA-256)، نشست‌های فعال، احراز هویت دو مرحله‌ای (2FA) و تغییر رمز عبور.'],
+    'op-view-tenants': ['مدیریت مشترکین', 'کاربران و لینک‌های اشتراک', 'ساخت، تمدید، محدودسازی سرعت و دریافت لینک اشتراک هوشمند یا QR برای تمامی کلاینت‌ها.']
+  };
+  Object.keys(viewTitles).forEach(id => {
+    const sec = document.getElementById(id);
+    if (!sec) return;
+    const eb = sec.querySelector('.ui-eyebrow');
+    const ti = sec.querySelector('.ui-title');
+    const sub = sec.querySelector('.ui-subtitle');
+    if (eb) eb.textContent = viewTitles[id][0];
+    if (ti) ti.textContent = viewTitles[id][1];
+    if (sub) sub.textContent = viewTitles[id][2];
+  });
+  const filterSearch = document.getElementById('filter-search');
+  if (filterSearch) filterSearch.placeholder = 'جستجوی نام کاربری...';
+  const filterFa = {
+    all: 'همه',
+    online: 'آنلاین',
+    offline: 'آفلاین',
+    active: 'فعال',
+    disabled: 'غیرفعال',
+    expiring: 'در حال انقضا (≤۷ روز)'
+  };
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    const f = pill.getAttribute('data-filter');
+    if (filterFa[f] && pill.childNodes[0]) {
+      pill.childNodes[0].nodeValue = filterFa[f] + ' ';
+    }
+  });
+}
 
 function setupLoginForm() {
   const user = document.getElementById('login-user');

@@ -478,7 +478,7 @@ def _build_inbound_for(
 # ═══════════════════════════════════════════════════════════════
 
 # Which protocol keys are hosted by sing-box rather than Xray.
-SINGBOX_PROTOCOLS = {"hysteria2", "tuic", "shadowtls", "naiveproxy"}
+SINGBOX_PROTOCOLS = {"hysteria2", "tuic", "shadowtls", "naiveproxy", "anytls"}
 
 
 def _build_singbox_inbounds_for(
@@ -567,6 +567,18 @@ def _build_singbox_inbounds_for(
             username=cfg.get("user", "panel"),
             password=password,
             port=int(cfg.get("port", 8447)),
+            sni=sni,
+            cert_path=cert_path,
+            key_path=key_path,
+        )
+    if protocol_key == "anytls":
+        password = cfg.get("password", "")
+        if not password:
+            logger.warning("anytls: password not set — skipping sing-box inbound")
+            return None
+        return SingboxConfigGenerator.generate_anytls(
+            password=password,
+            port=int(cfg.get("port", 8448)),
             sni=sni,
             cert_path=cert_path,
             key_path=key_path,
@@ -749,21 +761,28 @@ async def runtime_status(
             last_error="no ProtocolConfig row",
         )
 
-    # Cheap "is the protocol in the on-disk Xray config?" check.
     running = False
     try:
-        cfg_path = settings.xray_config_path
-        if os.path.isfile(cfg_path):
+        for cfg_path in (
+            settings.xray_config_path,
+            getattr(settings, "singbox_config_path", ""),
+            getattr(settings, "mieru_config_path", ""),
+        ):
+            if not cfg_path or not os.path.isfile(cfg_path):
+                continue
             with open(cfg_path, encoding="utf-8") as f:
                 on_disk = json.load(f)
             tags = [
                 ib.get("tag", "")
-                for ib in on_disk.get("inbounds", [])
+                for ib in (on_disk.get("inbounds", []) + on_disk.get("endpoints", []))
                 if isinstance(ib, dict)
             ]
-            running = row.tag in tags if row.tag else any(
-                row.protocol_key in t for t in tags
-            )
+            if row.protocol_key == "mieru" and on_disk.get("portBindings"):
+                running = True
+                break
+            if (row.tag and row.tag in tags) or any(row.protocol_key in t for t in tags):
+                running = True
+                break
     except (OSError, json.JSONDecodeError):
         running = False
 

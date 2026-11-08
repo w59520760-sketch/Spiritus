@@ -496,14 +496,31 @@ class RealityKeyManager:
                     _secrets.set_secret("reality_public_key", public_key)
                     return {"private_key": private_key, "public_key": public_key}
         except FileNotFoundError:
-            logger.warning("xray binary not found, generating placeholder keys")
+            pass
         except Exception as e:
-            logger.error(f"Failed to generate REALITY keys: {e}")
+            logger.error(f"Failed to generate REALITY keys via xray binary: {e}")
 
-        raise RuntimeError(
-            "Failed to generate REALITY X25519 key pair. "
-            "Ensure xray binary is available at /usr/local/bin/xray"
-        )
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+
+        priv_obj = X25519PrivateKey.generate()
+        private_key = base64.urlsafe_b64encode(
+            priv_obj.private_bytes(
+                serialization.Encoding.Raw,
+                serialization.PrivateFormat.Raw,
+                serialization.NoEncryption(),
+            )
+        ).decode().rstrip("=")
+        public_key = base64.urlsafe_b64encode(
+            priv_obj.public_key().public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
+        ).decode().rstrip("=")
+        from . import secrets as _secrets
+        _secrets.set_secret("reality_private_key", private_key)
+        _secrets.set_secret("reality_public_key", public_key)
+        return {"private_key": private_key, "public_key": public_key}
 
     @staticmethod
     def generate_short_id(length: int = 8) -> str:

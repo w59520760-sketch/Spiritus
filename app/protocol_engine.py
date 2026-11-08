@@ -44,6 +44,7 @@ class ProtocolBackend(str, Enum):
     shadowtls = "shadowtls"
     mieru = "mieru"
     naiveproxy = "naiveproxy"
+    anytls = "anytls"
 
 
 class ProtocolCategory(str, Enum):
@@ -325,6 +326,21 @@ PROTOCOLS: dict[str, ProtocolSpec] = {
             {"key": "concurrency", "type": "int", "default": 4, "label": "Concurrency"},
         ],
     ),
+    "anytls": ProtocolSpec(
+        key="anytls",
+        name="AnyTLS (Chameleon Padding)",
+        name_fa="AnyTLS (پدینگ ضد هوش مصنوعی)",
+        category=ProtocolCategory.standalone,
+        backend=ProtocolBackend.anytls,
+        description="AnyTLS with configurable multi-stage packet padding to defeat TLS-in-TLS detection.",
+        description_fa="پروتکل AnyTLS با پدینگ چندمرحله‌ای برای خنثی‌سازی تشخیص TLS-in-TLS در فیلترینگ هوشمند.",
+        requires_tls=True,
+        config_fields=[
+            {"key": "port", "type": "int", "default": 8448, "label": "Port"},
+            {"key": "password", "type": "string", "label": "Password"},
+            {"key": "sni", "type": "string", "default": "www.aparat.com", "label": "SNI"},
+        ],
+    ),
 
     # ── WireGuard ──
     "vless_ws_plain_front": ProtocolSpec(
@@ -432,6 +448,23 @@ class XrayConfigGenerator:
                 "xhttpSettings": {
                     "path": xhttp_path,
                     "mode": xhttp_mode,
+                    "xPaddingBytes": "100-1000",
+                    "scMaxEachPostBytes": 1000000,
+                    "scMinPostsIntervalMs": 30,
+                    "noGRPCHeader": True,
+                    "extra": {
+                        "xPaddingBytes": "100-1000",
+                        "noGRPCHeader": True,
+                        "scMaxEachPostBytes": 1000000,
+                        "scMinPostsIntervalMs": 30,
+                        "xmux": {
+                            "maxConcurrency": "16-32",
+                            "maxConnections": 0,
+                            "cMaxReuseTimes": "64-128",
+                            "hMaxRequestTimes": "600-900",
+                            "hMaxReusableSecs": "1800-3000",
+                        },
+                    },
                 }
             }
         }
@@ -1058,6 +1091,37 @@ class SingboxConfigGenerator:
         return [inbound]
 
     @staticmethod
+    def generate_anytls(
+        password: str,
+        port: int = 8448,
+        sni: str = "",
+        cert_path: str = "",
+        key_path: str = "",
+        padding_scheme: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        scheme = padding_scheme or [
+            "stop=8",
+            "0=30-30",
+            "1=100-400",
+            "2=400-500,c,500-1000",
+            "3=500-1000",
+            "4=500-1000",
+            "5=500-1000",
+            "6=500-1000",
+            "7=500-1000",
+        ]
+        inbound: dict[str, Any] = {
+            "type": "anytls",
+            "tag": "anytls-in",
+            "listen": "::",
+            "listen_port": int(port),
+            "users": [{"name": "panel", "password": password}],
+            "padding_scheme": scheme,
+            "tls": SingboxConfigGenerator._tls_block(sni, cert_path, key_path, alpn=["h2", "http/1.1"]),
+        }
+        return [inbound]
+
+    @staticmethod
     def generate_full_config(inbounds: list[dict[str, Any]]) -> dict[str, Any]:
         """Wrap rendered inbounds into a complete sing-box config."""
         return {
@@ -1487,14 +1551,41 @@ class ECHManager:
     """
 
     @staticmethod
-    def generate_ech_keys() -> dict[str, str]:
-        """Generate ECH key pair (HPKE public/private keys)."""
-        # In production, use hpke library. For now, generate placeholder keys.
-        private_key = secrets.token_hex(32)
-        public_key = secrets.token_hex(32)
+    def generate_ech_keys(public_name: str = "cloudflare-ech.com") -> dict[str, str]:
+        import struct
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+
+        priv_obj = X25519PrivateKey.generate()
+        priv_raw = priv_obj.private_bytes(
+            serialization.Encoding.Raw,
+            serialization.PrivateFormat.Raw,
+            serialization.NoEncryption(),
+        )
+        pub_raw = priv_obj.public_key().public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw,
+        )
+        name_bytes = (public_name or "cloudflare-ech.com").encode("ascii")
+        cipher_suites = struct.pack("!HH", 0x0001, 0x0001)
+        key_config = (
+            struct.pack("!BHH", 0, 0x0020, len(pub_raw))
+            + pub_raw
+            + struct.pack("!H", len(cipher_suites))
+            + cipher_suites
+        )
+        contents = (
+            key_config
+            + struct.pack("!BB", 0, len(name_bytes))
+            + name_bytes
+            + struct.pack("!H", 0)
+        )
+        ech_config = struct.pack("!HH", 0xFE0D, len(contents)) + contents
+        ech_config_list = struct.pack("!H", len(ech_config)) + ech_config
         return {
-            "private_key": private_key,
-            "public_key": public_key,
+            "private_key": priv_raw.hex(),
+            "public_key": pub_raw.hex(),
+            "ech_config_list": base64.b64encode(ech_config_list).decode(),
         }
 
     @staticmethod
@@ -1502,12 +1593,33 @@ class ECHManager:
         public_key: str,
         public_name: str = "cloudflare-ech.com",
         config_id: int = 0,
-        kem_id: int = 32,  # DHKEM(X25519, HKDF-SHA256)
-        sym_id: int = 1,   # HKDF-SHA256 + AES-128-GCM
+        kem_id: int = 32,
+        sym_id: int = 1,
     ) -> dict[str, Any]:
-        """Generate ECHConfig for DNS HTTPS record."""
+        import struct
+
+        try:
+            pub_raw = bytes.fromhex(public_key) if len(public_key) == 64 else base64.b64decode(public_key)
+        except Exception:
+            pub_raw = public_key.encode("utf-8")[:32].ljust(32, b"\x00")
+        name_bytes = (public_name or "cloudflare-ech.com").encode("ascii")
+        cipher_suites = struct.pack("!HH", 0x0001, sym_id)
+        key_config = (
+            struct.pack("!BHH", config_id & 0xFF, kem_id, len(pub_raw))
+            + pub_raw
+            + struct.pack("!H", len(cipher_suites))
+            + cipher_suites
+        )
+        contents = (
+            key_config
+            + struct.pack("!BB", 0, len(name_bytes))
+            + name_bytes
+            + struct.pack("!H", 0)
+        )
+        ech_config = struct.pack("!HH", 0xFE0D, len(contents)) + contents
+        ech_config_list = struct.pack("!H", len(ech_config)) + ech_config
         return {
-            "version": 0xfe0d,
+            "version": 0xFE0D,
             "config_id": config_id,
             "kem_id": kem_id,
             "sym_id": sym_id,
@@ -1515,6 +1627,7 @@ class ECHManager:
             "public_name": public_name,
             "maximum_name_length": 0,
             "extensions": [],
+            "ech_config_list": base64.b64encode(ech_config_list).decode(),
         }
 
     @staticmethod
@@ -1523,16 +1636,10 @@ class ECHManager:
         target: str = ".",
         port: int = 443,
     ) -> str:
-        """Generate DNS HTTPS/SVCB record with ECH config.
-
-        This should be published in DNS as:
-        _443._tcp.example.com IN SVCB 1 example.com ech=...
-        """
-        import base64
-        ech_bytes = base64.b64encode(
+        ech_bytes = ech_config.get("ech_config_list") or base64.b64encode(
             json.dumps(ech_config).encode()
         ).decode()
-        return f'1 . port={port} ech={ech_bytes}'
+        return f"1 {target} port={port} ech={ech_bytes}"
 
 
 # ═══════════════════════════════════════════════════════════════

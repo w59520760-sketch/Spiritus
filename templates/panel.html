@@ -43,9 +43,14 @@
     <section class="login-pane">
       <div class="login-topbar">
         <span class="login-crumb"><span class="login-dot"></span>AUTH / OPERATOR-LOGIN</span>
-        <button type="button" class="btn btn-sm btn-outline" onclick="cycleTheme()" title="Switch Theme (Obsidian / CyberOps / Midnight)">
-          <span class="material-symbols-outlined">palette</span><span data-theme-label>Theme</span>
-        </button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button type="button" class="btn btn-sm btn-outline" onclick="toggleDirection()" title="Switch Language / تغییر زبان">
+            <span class="material-symbols-outlined">language</span><span data-lang-label>{{ 'EN' if dir == 'rtl' else 'FA / فارسی' }}</span>
+          </button>
+          <button type="button" class="btn btn-sm btn-outline" onclick="cycleTheme()" title="Switch Theme (Obsidian / CyberOps / Midnight)">
+            <span class="material-symbols-outlined">palette</span><span data-theme-label>Theme</span>
+          </button>
+        </div>
       </div>
 
       <div class="login-form">
@@ -149,7 +154,7 @@
         <button type="button" class="btn btn-sm btn-danger" onclick="panicFlush()" title="Restart Xray: drops every live connection"><span class="material-symbols-outlined">warning</span><span class="ui-hide-md">Panic Flush</span></button>
         <button type="button" class="btn btn-sm btn-primary" onclick="toggleEmergencyCloak()" title="Emergency Cloak: force fragment + noise on every client"><span class="material-symbols-outlined">shield_lock</span><span class="ui-hide-md" data-cloak-label>Emergency Cloak</span></button>
         <button type="button" class="ui-icon-btn" onclick="forceSync()" title="Apply users and settings to the VPN server"><span class="material-symbols-outlined">sync</span></button>
-        <button type="button" class="ui-icon-btn" onclick="toggleDirection()" title="Switch to {{ 'LTR' if dir == 'rtl' else 'RTL' }}"><span class="material-symbols-outlined">format_textdirection_r_to_l</span></button>
+        <button type="button" class="ui-icon-btn" onclick="toggleDirection()" title="Switch Language / تغییر زبان"><span class="material-symbols-outlined">language</span><span class="ui-hide-md" data-lang-label>{{ 'EN' if dir == 'rtl' else 'فارسی' }}</span></button>
         <button type="button" id="theme-btn" class="ui-icon-btn" onclick="cycleTheme()" title="Switch theme (Obsidian / CyberOps / Midnight)"><span class="material-symbols-outlined">palette</span><span id="theme-label" class="ui-hide-md">Theme</span></button>
         <div class="ui-user">
           <span class="ui-avatar" id="ops-admin-initial">A</span>
@@ -174,6 +179,10 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="showModal('sysmon-modal')"><span class="material-symbols-outlined">monitoring</span>System details</button>
             <button type="button" class="btn btn-outline btn-sm" onclick="loadMissionView()"><span class="material-symbols-outlined">refresh</span>Refresh</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">📊 <b>Mission Control</b> displays real-time server throughput (ingress/egress), active users, running protocol count, and hardware health (CPU, RAM, Disk, Xray/sing-box status). Refreshed automatically every 5 seconds.</div>
+          <div class="help-fa" lang="fa">📊 <b>مرکز فرماندهی (Mission Control)</b> وضعیت لحظه‌ای ترافیک ورودی و خروجی سرور، تعداد کاربران آنلاین، تعداد پروتکل‌های فعال و سلامت سخت‌افزار (پردازنده، رم، دیسک و هسته‌های Xray/sing-box) را هر ۵ ثانیه به‌روزرسانی و نمایش می‌دهد.</div>
         </div>
         <div class="ui-kpis">
           <div class="ui-kpi">
@@ -225,6 +234,10 @@
             <button type="button" class="btn btn-danger btn-sm" onclick="panicFlush()"><span class="material-symbols-outlined">warning</span>Panic Flush</button>
             <button type="button" class="btn btn-primary btn-sm" onclick="toggleEmergencyCloak()"><span class="material-symbols-outlined">shield_lock</span><span data-cloak-label>Emergency Cloak</span></button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">🛡️ <b>Cyber War-Room</b> monitors scanner probes (Honeypot), failed logins, active Fail2ban blocks, and automatic anti-censorship responses. Enable <b>Automatic Emergency Cloak</b> so the panel automatically activates TLS fragmentation + noise padding whenever Iran probes report heavy DPI blocking.</div>
+          <div class="help-fa" lang="fa">🛡️ <b>اتاق جنگ سایبری (Cyber War-Room)</b> حملات اسکنرها به مسیرهای تله (Honeypot)، ورودهای ناموفق، آی‌پی‌های مسدودشده توسط Fail2ban و واکنش خودکار ضد فیلترینگ را نمایش می‌دهد. با فعال‌سازی <b>سپر اضطراری خودکار (Emergency Cloak)</b>، به محض تشدید اختلال در اپراتورهای ایران، فرگمنت TLS و بسته‌های نویز به‌طور خودکار برای همه کاربران فعال می‌شود.</div>
         </div>
         <div class="ui-kpis">
           <div class="ui-kpi">
@@ -303,8 +316,12 @@
           </div>
           <div class="ui-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="loadProtocolsView()"><span class="material-symbols-outlined">refresh</span>Re-check</button>
-            <button type="button" class="btn btn-primary btn-sm" onclick="showModal('settings-modal')"><span class="material-symbols-outlined">tune</span>Configure protocols</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="switchOperationTab('settings')"><span class="material-symbols-outlined">tune</span>Configure protocols</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">⚡ <b>Protocol Engine &amp; DPI</b> checks every active protocol port on this server, verifies REALITY target handshakes, and shows real-time pass rates from Iranian carriers. Click <b>Configure protocols</b> to enable/disable protocols or tune DPI evasion.</div>
+          <div class="help-fa" lang="fa">⚡ <b>موتور پروتکل و ضد DPI</b> وضعیت پورت‌های فعال سرور، تست هندشیک مقصدهای REALITY و نرخ عبور هر پروتکل از اپراتورهای ایران را بررسی می‌کند. برای فعال‌سازی پروتکل‌ها یا تنظیمات ضد فیلترینگ روی <b>تنظیم پروتکل‌ها (Configure protocols)</b> کلیک کنید.</div>
         </div>
         <section class="ui-card">
           <div class="ui-card-head">
@@ -330,6 +347,7 @@
             <span class="proto-badge" id="pb-shadowtls" style="display:none">STLS</span>
             <span class="proto-badge" id="pb-mieru" style="display:none">Mieru</span>
             <span class="proto-badge" id="pb-naiveproxy" style="display:none">Naive</span>
+            <span class="proto-badge" id="pb-anytls" style="display:none">AnyTLS</span>
             <span class="proto-badge" id="pb-wireguard" style="display:none">WG</span>
             <span class="proto-badge" id="pb-openvpn" style="display:none">OVPN</span>
             <span class="proto-badge proto-opt" id="pb-fragment" style="display:none">Fragment</span>
@@ -375,6 +393,10 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="loadRoutingView()"><span class="material-symbols-outlined">refresh</span>Refresh</button>
           </div>
         </div>
+        <div class="help-box">
+          <div class="help-en">🧭 <b>Carrier Steering</b> ranks protocols per Iranian ISP (MCI, Irancell, Rightel, Shatel, TCI, etc.) based on live probe reports and automatically places the healthiest protocol first in user subscriptions.</div>
+          <div class="help-fa" lang="fa">🧭 <b>مسیریابی هوشمند اپراتورها (Carrier Steering)</b> بهترین و پایدارترین پروتکل را برای هر اپراتور ایران (همراه اول، ایرانسل، رایتل، مخابرات، شاتل و...) بر اساس تست‌های ۲۴ ساعت گذشته مشخص کرده و در صدر لینک اشتراک کاربران قرار می‌دهد.</div>
+        </div>
         <div class="tactical-table-wrapper">
           <table class="tactical-table">
             <thead>
@@ -411,6 +433,10 @@
           <div class="ui-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="loadSentinelView()"><span class="material-symbols-outlined">refresh</span>Refresh</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">📡 <b>Sentinel Probes</b> are lightweight Python scripts you run on a phone (Termux) or server inside Iran without a VPN. They test which protocols pass through the local ISP and report latency and block status back to this panel.</div>
+          <div class="help-fa" lang="fa">📡 <b>سنسورهای داخل ایران (Sentinel Probes)</b> اسکریپت‌های سبک پایتون هستند که روی گوشی اندروید (Termux) یا سرور داخل ایران (بدون روشن بودن VPN) اجرا می‌شوند تا کیفیت اتصال و باز بودن پروتکل‌ها را روی اینترنت واقعی اپراتور بسنجند و به پنل گزارش دهند.</div>
         </div>
         <section class="ui-card">
           <div class="ui-card-head">
@@ -458,6 +484,10 @@
           <div class="ui-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="checkEdgeNodes()"><span class="material-symbols-outlined">network_check</span>Check all now</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">🌐 <b>Edge Nodes</b> monitors your relay/secondary servers every 5 minutes via TCP connect checks and alerts you on Telegram if any node goes unreachable.</div>
+          <div class="help-fa" lang="fa">🌐 <b>نودهای لبه (Edge Nodes)</b> سرورهای کمکی یا رله‌های شما را هر ۵ دقیقه از نظر در دسترس بودن پورت و پینگ (RTT) بررسی می‌کند و در صورت قطعی در تلگرام هشدار می‌دهد.</div>
         </div>
         <section class="ui-card">
           <div class="ui-card-head">
@@ -507,6 +537,10 @@
             <button type="button" class="btn btn-primary btn-sm" onclick="loadCarriersView()"><span class="material-symbols-outlined">refresh</span>Refresh</button>
           </div>
         </div>
+        <div class="help-box">
+          <div class="help-en">📈 <b>Carrier Diagnostics</b> breaks down protocol success rate and median latency across every Iranian ISP over the selected time window (24h, 7d, 30d).</div>
+          <div class="help-fa" lang="fa">📈 <b>عیب‌یابی اپراتورها (Carrier Diagnostics)</b> درصد موفقیت و میانهٔ پینگ تمام پروتکل‌ها را به تفکیک هر اپراتور ایران در بازهٔ زمانی انتخاب‌شده (۲۴ ساعت، ۷ روز، ۳۰ روز) نمایش می‌دهد.</div>
+        </div>
         <div id="carrier-test-results">
           <div class="tactical-card tactical-empty">Loading…</div>
         </div>
@@ -523,6 +557,10 @@
           <div class="ui-actions">
             <button type="button" class="btn btn-outline btn-sm" onclick="loadFinancialsView()"><span class="material-symbols-outlined">refresh</span>Refresh</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">💳 <b>Financials &amp; Billing</b> tracks Rial (ZarinPal / IDPay) and crypto (USDT TRC-20) payments, pending invoices, and reseller wallet balances and ledger entries.</div>
+          <div class="help-fa" lang="fa">💳 <b>امور مالی و صورتحساب (Financials &amp; Billing)</b> تراکنش‌های ریالی (زرین‌پال / آیدی‌پی) و ارزی (تتر TRC-20)، فاکتورهای در انتظار پرداخت و موجودی کیف پول و دفتر کل نمایندگان را نمایش می‌دهد.</div>
         </div>
         <div class="ui-kpis">
           <div class="ui-kpi">
@@ -601,6 +639,10 @@
             <button type="button" class="btn btn-primary btn-sm" onclick="verifySecurityAudit()"><span class="material-symbols-outlined">fingerprint</span>Verify hash chain</button>
           </div>
         </div>
+        <div class="help-box">
+          <div class="help-en">🔐 <b>Security &amp; Audit Vault</b> records every administrative action in a tamper-evident cryptographic HMAC-SHA256 chain. Click <b>Verify hash chain</b> at any time to confirm no log entries have been modified or deleted.</div>
+          <div class="help-fa" lang="fa">🔐 <b>خزانه امنیت و ممیزی (Security &amp; Audit Vault)</b> تمام اقدامات مدیریتی را در یک زنجیره رمزنگاری‌شده HMAC-SHA256 غیرقابل دستکاری ثبت می‌کند. با زدن دکمهٔ <b>بررسی زنجیره هش (Verify hash chain)</b> می‌توانید از عدم تغییر یا حذف لاگ‌ها مطمئن شوید.</div>
+        </div>
         <div class="ui-section-head"><h2 class="ui-section-title"><span class="material-symbols-outlined">receipt_long</span>HMAC audit ledger</h2><span class="ui-section-meta">Latest 10 entries</span></div>
         <div class="tactical-table-wrapper">
           <table class="tactical-table">
@@ -635,6 +677,10 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="showModal('bulk-modal')"><span class="material-symbols-outlined">group_add</span>Bulk create</button>
             <button type="button" class="btn btn-primary btn-sm" onclick="showModal('add-modal')"><span class="material-symbols-outlined">person_add</span>Add user</button>
           </div>
+        </div>
+        <div class="help-box">
+          <div class="help-en">👥 <b>Users &amp; Subscriptions</b> manages all VPN accounts: create single or bulk users, set data quotas, expiry days, and upload/download speed limits, and share universal subscription links (V2Ray JSON, sing-box, Clash Meta, and QR codes).</div>
+          <div class="help-fa" lang="fa">👥 <b>کاربران و اشتراک‌ها (Users &amp; Subscriptions)</b> مدیریت کامل اکانت‌های VPN: ساخت کاربر تکی یا گروهی، تعیین حجم، تاریخ انقضا و محدودیت سرعت آپلود/دانلود، و دریافت لینک اشتراک هوشمند (سازگار با V2Ray، Hiddify، sing-box و Clash) به‌همراه QR کد.</div>
         </div>
         <div class="ui-kpis">
           <div class="ui-kpi">
@@ -1247,14 +1293,14 @@
     </div>
 
     
-    <div class="settings-section" hidden data-unavailable="amneziawg">
+    <div class="settings-section">
       <div class="sec-header">
         <div class="settings-title">AmneziaWG 2.0</div>
         <span class="s-indicator off" id="si-amneziawg"><span class="dot"></span> <span class="si-text">OFF</span></span>
       </div>
       <div class="help-box">
-        <div class="help-en">🛡️ <b>AmneziaWG</b> WireGuard fork with advanced obfuscation. Junk packets and magic headers defeat DPI.</div>
-        <div class="help-fa">🛡️ <b>AmneziaWG</b> فورک WireGuard با مخفی‌سازی پیشرفته. پکت‌های جعلی و هدرهای جادویی DPI رو شکست میدن.</div>
+        <div class="help-en">🛡️ <b>AmneziaWG 2.0:</b> Censorship-resistant WireGuard evolution with dynamic 32-bit magic headers (H1–H4), random initialization padding (S1/S2), and pre-handshake junk packets (Jc/Jmin/Jmax) that defeat deep packet inspection.</div>
+        <div class="help-fa" lang="fa">🛡️ <b>پروتکل AmneziaWG 2.0:</b> نسخه ضد فیلترینگ WireGuard با هدرهای جادویی ۳۲ بیتی پویا (H1 تا H4)، پدینگ تصادفی هندشیک (S1/S2) و ارسال بسته‌های جعلی پیش از اتصال (Jc/Jmin/Jmax) که شناسایی پروتکل توسط DPI را کاملاً خنثی می‌کند.</div>
       </div>
       <div class="settings-row">
         <div><div class="settings-label">AmneziaWG 2.0</div>
@@ -1367,6 +1413,28 @@
         <input type="text" id="set-naiveproxy-sni" placeholder="yourdomain.com"></div>
       <div class="form-group"><label>Concurrency</label>
         <input type="number" id="set-naiveproxy-concurrency" value="4" min="1" max="32"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="sec-header">
+        <div class="settings-title">AnyTLS (Chameleon Padding)</div>
+        <span class="s-indicator off" id="si-anytls"><span class="dot"></span> <span class="si-text">OFF</span></span>
+      </div>
+      <div class="help-box">
+        <div class="help-en">🦎 <b>AnyTLS (sing-box 1.12+):</b> Next-generation TLS-in-TLS proxy elimination protocol with an 8-stage programmable packet padding scheme that reshapes packet lengths and timing to defeat AI traffic classifiers.</div>
+        <div class="help-fa" lang="fa">🦎 <b>پروتکل AnyTLS (معماری Chameleon):</b> نسل جدید پروتکل ضد تشخیص TLS-in-TLS در هسته sing-box که با الگوریتم پدینگ ۸ مرحله‌ای، اندازه و زمان‌بندی بسته‌ها را تغییر شکل داده و هوش مصنوعی سیستم فیلترینگ را فریب می‌دهد.</div>
+      </div>
+      <div class="settings-row">
+        <div><div class="settings-label">AnyTLS</div>
+          <div class="settings-desc">Enable / فعال‌سازی</div></div>
+        <label class="toggle"><input type="checkbox" id="set-anytls"><span class="toggle-slider"></span></label>
+      </div>
+      <div class="form-group"><label>Port</label>
+        <input type="number" id="set-anytls-port" value="8448" min="1" max="65535"></div>
+      <div class="form-group"><label>Password</label>
+        <input type="text" id="set-anytls-password" class="ui-mono" placeholder="Auto-generated"></div>
+      <div class="form-group"><label>SNI (Camouflage Domain)</label>
+        <input type="text" id="set-anytls-sni" value="www.Speedtest.net" placeholder="www.Speedtest.net"></div>
     </div>
 
     
@@ -2118,6 +2186,10 @@
           <div class="ui-actions"><a class="btn btn-outline btn-sm" href="/agent"><span class="material-symbols-outlined">support_agent</span>Agent panel</a></div>
         </div>
         <div id="agents-modal" class="ui-card ui-page-card ui-page-agents">
+          <div class="help-box" style="margin-bottom:14px">
+            <div class="help-en">🤝 <b>Reseller Agents:</b> Create isolated reseller accounts with dedicated traffic quotas and per-user speed limits. Agents log in at <code>/agent</code> to manage only their own subscribers.</div>
+            <div class="help-fa" lang="fa">🤝 <b>مدیریت نمایندگان فروش:</b> ساخت حساب‌های نمایندگی مجزا با سقف ترافیک مشخص و محدودیت سرعت پیش‌فرض. هر نماینده از مسیر <code>/agent</code> وارد پنل اختصاصی خود شده و فقط مشترکین خودش را مدیریت می‌کند.</div>
+          </div>
 <div class="settings-section">
       <div class="settings-title">Create Agent</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -2156,6 +2228,10 @@
           <div class="ui-actions"><button type="button" class="btn btn-outline btn-sm" onclick="fetchOnlineUsers()"><span class="material-symbols-outlined">refresh</span>Refresh</button></div>
         </div>
         <div id="online-modal" class="ui-card ui-page-card ui-page-online">
+          <div class="help-box" style="margin-bottom:14px">
+            <div class="help-en">🟢 <b>Real-Time Active Sessions:</b> Live view of currently connected subscribers, their source IP addresses, and active protocol sessions. Automatically refreshes every 15 seconds.</div>
+            <div class="help-fa" lang="fa">🟢 <b>نشست‌های فعال لحظه‌ای:</b> نمایش زنده مشترکین متصل در همین لحظه به همراه آدرس IP مبدأ و پروتکل مصرفی. این لیست هر ۱۵ ثانیه به‌صورت خودکار به‌روزرسانی می‌شود.</div>
+          </div>
 <div id="online-users-content">
       <div style="color:var(--t3);text-align:center;padding:30px">Loading...</div>
     </div>
@@ -2173,6 +2249,10 @@
           <div class="ui-actions"><button type="button" class="btn btn-outline btn-sm" onclick="loadBackups()"><span class="material-symbols-outlined">refresh</span>Refresh list</button><button type="button" class="btn btn-primary btn-sm" onclick="createBackup()"><span class="material-symbols-outlined">backup</span>Create backup</button></div>
         </div>
         <div id="backup-modal" class="ui-card ui-page-card ui-page-backup">
+          <div class="help-box" style="margin-bottom:14px">
+            <div class="help-en">💾 <b>Encrypted Snapshot & Disaster Recovery:</b> Create instant snapshots of users, keys, and panel settings before major changes, or restore previous snapshots with a single click.</div>
+            <div class="help-fa" lang="fa">💾 <b>پشتیبان‌گیری و بازیابی اضطراری:</b> تهیه نسخه پشتیبان کامل از کاربران، کلیدهای رمزنگاری و تنظیمات پنل پیش از اعمال تغییرات مهم، با قابلیت بازگردانی فوری یا پاک‌سازی خودکار بکاپ‌های قدیمی.</div>
+          </div>
 <div class="form-group" style="margin-bottom:16px">
       <label>Cleanup backups older than (days):</label>
       <div style="display:flex;gap:8px">
@@ -2347,6 +2427,8 @@
       <button class="config-tab tab-shadowtls" onclick="switchConfigTab('shadowtls')" id="ct-shadowtls" style="display:none">STLS</button>
       <button class="config-tab tab-mieru" onclick="switchConfigTab('mieru')" id="ct-mieru" style="display:none">Mieru</button>
       <button class="config-tab tab-naiveproxy" onclick="switchConfigTab('naiveproxy')" id="ct-naiveproxy" style="display:none">Naive</button>
+      <button class="config-tab tab-anytls" onclick="switchConfigTab('anytls')" id="ct-anytls" style="display:none">AnyTLS</button>
+      <button class="config-tab tab-amneziawg" onclick="switchConfigTab('amneziawg')" id="ct-amneziawg" style="display:none">AWG</button>
       <button class="config-tab tab-wireguard" onclick="switchConfigTab('wireguard')" id="ct-wireguard" style="display:none">WG</button>
     </div>
     <div class="config-center">

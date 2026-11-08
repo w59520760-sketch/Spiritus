@@ -65,6 +65,9 @@ def parse_link(link: str) -> dict[str, Any] | None:
                 "udp_relay_mode": _q(qs, "udp_relay_mode", "native"), "insecure": _q(qs, "allow_insecure") == "1"}
     if scheme == "naive+https":
         return {**base, "proto": "naive", "username": user, "password": pw}
+    if scheme == "anytls":
+        return {**base, "proto": "anytls", "password": user, "sni": _q(qs, "sni"),
+                "fp": _q(qs, "fp", "chrome"), "pin": _q(qs, "pinSHA256"), "insecure": _q(qs, "insecure") == "1"}
     if scheme == "mierus":  # the simple link carries no name
         return {**base, "name": "V7LTHRONYX-Mieru", "proto": "mieru", "port": int(_q(qs, "port") or 0), "username": user, "password": pw,
                 "transport": _q(qs, "protocol", "TCP"), "multiplexing": _q(qs, "multiplexing", "MULTIPLEXING_LOW")}
@@ -212,6 +215,9 @@ def singbox_outbounds(nodes: list[dict], spki_pin: str) -> list[dict]:
             if n.get("cert_pem"):
                 tls["certificate"] = n["cert_pem"].strip().splitlines()
             out.append({"type": "naive", **base, "username": n["username"], "password": n["password"], "tls": tls})
+        elif p == "anytls":
+            out.append({"type": "anytls", **base, "password": n["password"],
+                        "tls": _sb_tls(n, spki_pin, ["h2", "http/1.1"])})
         elif p == "wireguard":  # an endpoint in sing-box 1.11+
             out.append({"type": "wireguard", "tag": tag, "address": [f"{n['address']}/32"],
                         "private_key": n["private_key"], "mtu": n["mtu"],
@@ -235,6 +241,14 @@ def singbox_profile(user, server_ip: str, links: dict[str, str], state: dict, sp
     nodes = [o for o in nodes if o["type"] != "wireguard"]
     profile = {
         "log": {"level": "warn"},
+        "dns": {
+            "servers": [
+                {"type": "https", "tag": "dns-remote", "server": "1.1.1.1", "detour": "proxy"},
+                {"type": "udp", "tag": "dns-direct", "server": "1.1.1.1"},
+            ],
+            "final": "dns-remote",
+            "strategy": "prefer_ipv4",
+        },
         "inbounds": [
             {"type": "tun", "tag": "tun-in", "address": ["172.19.0.1/30"], "auto_route": True, "strict_route": True},
             {"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": 2080},
@@ -246,7 +260,16 @@ def singbox_profile(user, server_ip: str, links: dict[str, str], state: dict, sp
             *nodes,
             {"type": "direct", "tag": "direct"},
         ],
-        "route": {"final": "proxy", "auto_detect_interface": True},
+        "route": {
+            "rules": [
+                {"action": "sniff"},
+                {"protocol": "dns", "action": "hijack-dns"},
+                {"ip_cidr": ["10.10.34.0/24"], "action": "reject"},
+            ],
+            "final": "proxy",
+            "auto_detect_interface": True,
+            "default_domain_resolver": "dns-direct",
+        },
     }
     if endpoints:
         profile["endpoints"] = endpoints
@@ -330,6 +353,10 @@ def clash_proxies(nodes: list[dict], leaf_pin: str) -> list[dict]:
         elif p == "wireguard":
             out.append({**cp, "type": "wireguard", "ip": n["address"], "private-key": n["private_key"],
                         "public-key": n["peer_public_key"], "mtu": n["mtu"]})
+        elif p == "anytls":
+            cp.update({"type": "anytls", "password": n["password"], "alpn": ["h2", "http/1.1"]})
+            _clash_tls(n, leaf_pin, cp)
+            out.append(cp)
         elif p == "mieru":
             out.append({**cp, "type": "mieru", "transport": n["transport"], "username": n["username"],
                         "password": n["password"], "multiplexing": n["multiplexing"]})
@@ -344,13 +371,45 @@ def clash_profile(user, server_ip: str, links: dict[str, str], state: dict, leaf
         "allow-lan": False,
         "mode": "rule",
         "log-level": "warning",
+        "ipv6": False,
+        "sniffer": {
+            "enable": True,
+            "override-destination": True,
+            "sniff": {
+                "TLS": {"ports": [443, 8443]},
+                "HTTP": {"ports": [80, 8080], "override-destination": True},
+                "QUIC": {"ports": [443, 8443]},
+            },
+        },
+        "dns": {
+            "enable": True,
+            "ipv6": False,
+            "enhanced-mode": "fake-ip",
+            "fake-ip-range": "198.18.0.1/16",
+            "default-nameserver": ["1.1.1.1", "8.8.8.8"],
+            "nameserver": [
+                "https://1.1.1.1/dns-query#PROXY",
+                "https://8.8.8.8/dns-query#PROXY",
+            ],
+            "proxy-server-nameserver": [
+                "https://1.1.1.1/dns-query",
+                "1.1.1.1",
+            ],
+            "fallback-filter": {
+                "geoip": True,
+                "ipcidr": ["10.10.34.0/24", "240.0.0.0/4", "127.0.0.1/8"],
+            },
+        },
         "proxies": proxies,
         "proxy-groups": [
             {"name": "PROXY", "type": "select", "proxies": ["AUTO", *names]},
             {"name": "AUTO", "type": "url-test", "proxies": names,
              "url": "https://www.gstatic.com/generate_204", "interval": 300},
         ],
-        "rules": ["MATCH,PROXY"],
+        "rules": [
+            "IP-CIDR,10.10.34.0/24,REJECT,no-resolve",
+            "MATCH,PROXY",
+        ],
     }
 
 

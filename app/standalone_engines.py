@@ -71,6 +71,9 @@ def client_credentials(state: dict, user) -> dict[str, dict[str, str]]:
             "username": state.get("mieru_user") or user.name,
             "password": state.get("mieru_password") or uid,
         },
+        "anytls": {
+            "password": state.get("anytls_password") or uid,
+        },
     }
 
 
@@ -92,10 +95,18 @@ def standalone_settings(state: dict) -> dict[str, Any]:
         "shadowtls_sni": state.get("shadowtls_sni") or sni_host,
         "naive_port": int(state.get("naiveproxy_port") or 8447),
         "naive_sni": state.get("naiveproxy_sni") or sni_host,
+        "anytls_port": int(state.get("anytls_port") or 8448),
+        "anytls_sni": state.get("anytls_sni") or sni_host,
         "wireguard_port": int(state.get("wireguard_port") or 51821),
         "wireguard_address": state.get("wireguard_address") or "10.9.0.1/16",
         "wireguard_dns": state.get("wireguard_dns") or "1.1.1.1",
         "wireguard_mtu": int(state.get("wireguard_mtu") or 1280),
+        "amneziawg_port": int(state.get("amneziawg_port") or 51820),
+        "amneziawg_jc": int(state.get("amneziawg_jc") or 6),
+        "amneziawg_jmin": int(state.get("amneziawg_jmin") or 50),
+        "amneziawg_jmax": int(state.get("amneziawg_jmax") or 1000),
+        "amneziawg_s1": int(state.get("amneziawg_s1") or 44),
+        "amneziawg_s2": int(state.get("amneziawg_s2") or 92),
         "mieru_port": int(state.get("mieru_port") or 8446),
         "mieru_transport": "UDP" if str(state.get("mieru_transport") or "").upper() == "UDP" else "TCP",
         "mieru_mtu": int(state.get("mieru_mtu") or 1400),
@@ -158,6 +169,52 @@ def wireguard_client_conf(state: dict, user, server_ip: str) -> str | None:
         f"PublicKey = {server_pub}\n"
         "AllowedIPs = 0.0.0.0/0, ::/0\n"
         f"Endpoint = {host}:{st['wireguard_port']}\n"
+        "PersistentKeepalive = 25\n"
+    )
+
+
+def amneziawg_headers(state: dict) -> tuple[int, int, int, int]:
+    import struct
+
+    digest = hmac.new(settings.secret_key.encode(), b"spiritus-amneziawg-headers", hashlib.sha256).digest()
+    h1, h2, h3, h4 = struct.unpack("!IIII", digest[:16])
+    return (
+        int(state.get("amneziawg_h1") or (h1 | 0x10000000)),
+        int(state.get("amneziawg_h2") or (h2 | 0x20000000)),
+        int(state.get("amneziawg_h3") or (h3 | 0x40000000)),
+        int(state.get("amneziawg_h4") or (h4 | 0x80000000)),
+    )
+
+
+def amneziawg_client_conf(state: dict, user, server_ip: str) -> str | None:
+    address = wireguard_user_address(state, user)
+    if not address:
+        return None
+    st = standalone_settings(state)
+    priv, _ = wireguard_user_keys(user)
+    _, server_pub = wireguard_server_keys()
+    h1, h2, h3, h4 = amneziawg_headers(state)
+    host = f"[{server_ip}]" if ":" in server_ip else server_ip
+    port = st["amneziawg_port"] if not _on(state, "wireguard_enabled") else st["wireguard_port"]
+    return (
+        "[Interface]\n"
+        f"PrivateKey = {priv}\n"
+        f"Address = {address}/32\n"
+        f"DNS = {st['wireguard_dns']}\n"
+        f"MTU = {st['wireguard_mtu']}\n"
+        f"Jc = {st['amneziawg_jc']}\n"
+        f"Jmin = {st['amneziawg_jmin']}\n"
+        f"Jmax = {st['amneziawg_jmax']}\n"
+        f"S1 = {st['amneziawg_s1']}\n"
+        f"S2 = {st['amneziawg_s2']}\n"
+        f"H1 = {h1}\n"
+        f"H2 = {h2}\n"
+        f"H3 = {h3}\n"
+        f"H4 = {h4}\n\n"
+        "[Peer]\n"
+        f"PublicKey = {server_pub}\n"
+        "AllowedIPs = 0.0.0.0/0, ::/0\n"
+        f"Endpoint = {host}:{port}\n"
         "PersistentKeepalive = 25\n"
     )
 
@@ -282,9 +339,26 @@ def singbox_server_config(state: dict, users: list, cert_file: str, key_file: st
             "users": _dedupe([{"username": c["naiveproxy"]["username"], "password": c["naiveproxy"]["password"]} for u, c in creds]),
             "tls": naive_tls,
         })
+    if _on(state, "anytls_enabled") and have_cert:
+        inbounds.append({
+            "type": "anytls", "tag": "anytls-in", "listen": "::", "listen_port": st["anytls_port"],
+            "users": _dedupe([{"name": u.name, "password": c["anytls"]["password"]} for u, c in creds]),
+            "padding_scheme": [
+                "stop=8",
+                "0=30-30",
+                "1=100-400",
+                "2=400-500,c,500-1000",
+                "3=500-1000",
+                "4=500-1000",
+                "5=500-1000",
+                "6=500-1000",
+                "7=500-1000",
+            ],
+            "tls": tls(["h2", "http/1.1"]),
+        })
     endpoints: list[dict[str, Any]] = []
     wg_rules: list[dict[str, Any]] = []
-    if _on(state, "wireguard_enabled"):
+    if _on(state, "wireguard_enabled") or _on(state, "amneziawg_enabled"):
         server_priv, _ = wireguard_server_keys()
         peers = []
         for u in users:
@@ -292,10 +366,11 @@ def singbox_server_config(state: dict, users: list, cert_file: str, key_file: st
             if addr:
                 peers.append({"public_key": wireguard_user_keys(u)[1], "allowed_ips": [f"{addr}/32"]})
                 wg_rules.append({"source_ip_cidr": [f"{addr}/32"], "outbound": f"u{u.id}"})
+        wg_port = st["wireguard_port"] if _on(state, "wireguard_enabled") else st["amneziawg_port"]
         endpoints.append({
             "type": "wireguard", "tag": "wireguard-in", "system": False,
             "mtu": st["wireguard_mtu"], "address": [st["wireguard_address"]],
-            "private_key": server_priv, "listen_port": st["wireguard_port"], "peers": peers,
+            "private_key": server_priv, "listen_port": wg_port, "peers": peers,
         })
     if not inbounds and not endpoints:
         return None
