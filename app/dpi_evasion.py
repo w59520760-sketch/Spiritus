@@ -500,6 +500,7 @@ class RealityKeyManager:
         except Exception as e:
             logger.error(f"Failed to generate REALITY keys via xray binary: {e}")
 
+        import base64
         from cryptography.hazmat.primitives import serialization
         from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
