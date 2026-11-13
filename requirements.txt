@@ -30,7 +30,7 @@ cryptography>=50.0.0
 webauthn==2.7.0
 
 # Background Jobs
-celery>=5.3.0
+celery>=5.7.0
 
 # System & Process
 psutil>=5.9.0
