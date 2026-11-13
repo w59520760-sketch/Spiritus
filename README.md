@@ -222,7 +222,7 @@ Spiritus is built to be exposed to hostile networks. Defenses are layered:
 **One-line install** — downloads and runs the installer, which clones the repo into `/opt/v7lthronyx`:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v74all/Spiritus/main/install.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)"
 ```
 
 It ends by printing the panel address, username and password. Step-by-step guide with common problems (Persian and English): [INSTALL.md](INSTALL.md).
@@ -345,7 +345,7 @@ Released under the [MIT License](LICENSE).
 
 **نصب سریع (یک‌خط)** — دامنه لازم نیست. نصب‌کننده خودش ریپو را در `/opt/v7lthronyx` clone می‌کند و در آخر آدرس پنل، نام کاربری و رمز را نشان می‌دهد:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v74all/Spiritus/main/install.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)"
 ```
 راهنمای قدم‌به‌قدم و مشکلات رایج: [INSTALL.md](INSTALL.md)
 

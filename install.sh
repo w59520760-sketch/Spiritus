@@ -20,7 +20,7 @@ BANNER='
      \/    /_/   |______|_|  |_|  |_|_|  \_\\____/|_| \_|  |_|   /_/ \_\
 '
 
-REPO_URL="https://github.com/v74all/Spiritus.git"
+REPO_URL="https://github.com/w59520760-sketch/Spiritus.git"
 INSTALL_DIR="/opt/v7lthronyx"
 SERVICE_NAME="spiritus"
 VERSION="2.1.0"
@@ -1535,7 +1535,7 @@ show_info() {
     echo -e "${CYAN}║${NC}    ${GREEN}spiritus uninstall${NC}       Stop and remove panel (--purge to drop DB)       ${CYAN}║${NC}"
     echo -e "${CYAN}╠══════════════════════════════════════════════════════════════════════════════╣${NC}"
     echo -e "${CYAN}║${NC}  ${BOLD}ONE-LINE INSTALL / UPDATE COMMAND:${NC}                                          ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}    ${DIM}curl -fsSL https://raw.githubusercontent.com/v74all/Spiritus/main/install.sh | sudo bash${NC}"
+    echo -e "${CYAN}║${NC}    ${DIM}curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh | sudo bash${NC}"
     echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }

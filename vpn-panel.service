@@ -1,6 +1,6 @@
 [Unit]
 Description=V7LTHRONYX VPN Management Panel
-Documentation=https://github.com/v74all/Spiritus
+Documentation=https://github.com/w59520760-sketch/Spiritus
 After=network.target xray.service postgresql.service redis-server.service v7l-privileged-helper.service
 Wants=xray.service v7l-privileged-helper.service
 

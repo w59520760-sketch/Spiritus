@@ -49,7 +49,7 @@ psql -h localhost -U spiritus -d spiritus -c "SELECT version();"
 
 ```bash
 # 1. Clone v2.0
-git clone https://github.com/v74all/Spiritus.git
+git clone https://github.com/w59520760-sketch/Spiritus.git
 cd Spiritus
 git checkout v2.0
 
@@ -419,8 +419,8 @@ psql -U spiritus -d spiritus -c "SELECT COUNT(*) FROM audit_logs;"
 
 ## 📞 Support
 
-- **Issues**: https://github.com/v74all/Spiritus/issues
-- **Discussions**: https://github.com/v74all/Spiritus/discussions
+- **Issues**: https://github.com/w59520760-sketch/Spiritus/issues
+- **Discussions**: https://github.com/w59520760-sketch/Spiritus/discussions
 - **Documentation**: [README.md](README.md)
 
 ---

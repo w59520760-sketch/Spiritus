@@ -124,7 +124,7 @@ INSTALL.md           (4.2 KB)  - Installation guide
 ### Local Development
 ```bash
 # Clone and setup
-git clone https://github.com/v74all/Spiritus.git
+git clone https://github.com/w59520760-sketch/Spiritus.git
 cd Spiritus
 git checkout main  # v2.0 is on main
 
@@ -362,9 +362,9 @@ We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 ## 📞 Support
 
-- **GitHub Issues**: https://github.com/v74all/Spiritus/issues
-- **GitHub Discussions**: https://github.com/v74all/Spiritus/discussions
-- **Documentation**: https://github.com/v74all/Spiritus#documentation
+- **GitHub Issues**: https://github.com/w59520760-sketch/Spiritus/issues
+- **GitHub Discussions**: https://github.com/w59520760-sketch/Spiritus/discussions
+- **Documentation**: https://github.com/w59520760-sketch/Spiritus#documentation
 
 ---
 
@@ -423,7 +423,7 @@ Thank you for choosing Spiritus! This v2.0 release represents months of planning
 
 **Status**: ✅ v2.0.0 Complete  
 **Release Date**: 2024  
-**Repository**: https://github.com/v74all/Spiritus  
+**Repository**: https://github.com/w59520760-sketch/Spiritus  
 **Branch**: main  
 **Latest Commit**: f0394d3  
 
