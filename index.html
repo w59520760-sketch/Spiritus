@@ -98,7 +98,7 @@
 <div class="relative bg-surface-container-lowest rounded-lg p-space-md flex flex-col md:flex-row items-start md:items-center justify-between gap-space-md shadow-inner">
 <div class="flex items-center gap-space-sm overflow-x-auto w-full md:w-auto py-1">
 <span class="text-tertiary font-label-code-md font-bold select-none">$</span>
-<code class="font-label-code-md text-label-code-md text-text-primary whitespace-nowrap" id="installCommand">sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)"</code>
+<code class="font-label-code-md text-label-code-md text-text-primary whitespace-nowrap" id="installCommand">sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v7lthronyx1/Spiritus/main/install.sh)"</code>
 </div>
 <button class="flex-shrink-0 flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-primary hover:bg-neon-teal text-surface-base font-label-code-sm text-label-code-sm font-bold shadow-md transition-all active:scale-95" id="copySnippetBtn" onclick="copySnippet()">
 <span class="material-symbols-outlined text-[16px]">content_copy</span>
@@ -852,7 +852,7 @@
 <span class="material-symbols-outlined text-[20px]">terminal</span>
 <span>One-Line Installer</span>
 </a>
-<a class="flex items-center justify-center gap-space-sm px-space-xl py-3.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-text-primary font-headline-sm text-headline-sm font-semibold shadow-md transition-all text-center" href="https://github.com/w59520760-sketch/Spiritus" rel="noopener noreferrer" target="_blank">
+<a class="flex items-center justify-center gap-space-sm px-space-xl py-3.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-text-primary font-headline-sm text-headline-sm font-semibold shadow-md transition-all text-center" href="https://github.com/v7lthronyx1/Spiritus" rel="noopener noreferrer" target="_blank">
 <span class="material-symbols-outlined text-[20px]">code</span>
 <span>View Source on GitHub</span>
 </a>
@@ -892,7 +892,7 @@
 
   // bash -c takes the script's own arguments after a name for $0.
   function appendFlag(flag) {
-    const base = 'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)" install.sh';
+    const base = 'sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v7lthronyx1/Spiritus/main/install.sh)" install.sh';
     document.getElementById("installCommand").innerText = base + " " + flag;
   }
 

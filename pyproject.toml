@@ -93,11 +93,11 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/w59520760-sketch/Spiritus"
-Repository = "https://github.com/w59520760-sketch/Spiritus.git"
-Documentation = "https://github.com/w59520760-sketch/Spiritus#documentation"
-Issues = "https://github.com/w59520760-sketch/Spiritus/issues"
-Discussions = "https://github.com/w59520760-sketch/Spiritus/discussions"
+Homepage = "https://github.com/v7lthronyx1/Spiritus"
+Repository = "https://github.com/v7lthronyx1/Spiritus.git"
+Documentation = "https://github.com/v7lthronyx1/Spiritus#documentation"
+Issues = "https://github.com/v7lthronyx1/Spiritus/issues"
+Discussions = "https://github.com/v7lthronyx1/Spiritus/discussions"
 
 [tool.black]
 line-length = 100

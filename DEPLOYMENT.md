@@ -127,7 +127,7 @@ spiritus/
 ### Local Development
 ```bash
 # Clone and setup
-git clone https://github.com/w59520760-sketch/Spiritus.git
+git clone https://github.com/v7lthronyx1/Spiritus.git
 cd Spiritus
 git checkout v2.0
 
@@ -261,8 +261,8 @@ See [ROADMAP.md](ROADMAP.md) for detailed timeline and priorities.
 
 ## 📞 Support & Contributing
 
-- **GitHub Issues**: https://github.com/w59520760-sketch/Spiritus/issues
-- **Discussions**: https://github.com/w59520760-sketch/Spiritus/discussions
+- **GitHub Issues**: https://github.com/v7lthronyx1/Spiritus/issues
+- **Discussions**: https://github.com/v7lthronyx1/Spiritus/discussions
 - **Contributing**: See [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Security**: Email security@spiritus.example.com
 

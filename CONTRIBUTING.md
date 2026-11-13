@@ -17,7 +17,7 @@ We welcome contributions from the community! This document explains our developm
 
 ```bash
 # Clone the repository
-git clone https://github.com/w59520760-sketch/Spiritus.git
+git clone https://github.com/v7lthronyx1/Spiritus.git
 cd Spiritus
 
 # Create virtual environment

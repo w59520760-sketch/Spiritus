@@ -7,7 +7,7 @@
 **۱. نصب.** با SSH به سرور وصل شو و این را اجرا کن:
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v7lthronyx1/Spiritus/main/install.sh)"
 ```
 
 اگر پرسید دامنه داری، اگر نداری فقط Enter بزن.
@@ -37,7 +37,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Sp
 
 1. **Install.** Over SSH, run:
    ```bash
-   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/w59520760-sketch/Spiritus/main/install.sh)"
+   sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/v7lthronyx1/Spiritus/main/install.sh)"
    ```
    When it asks for a domain, press Enter if you don't have one.
 2. **Sign in.** The installer ends by printing the panel address, the username and the password. Open the address and sign in, then change the password.
@@ -92,7 +92,7 @@ for m in ifb sch_htb sch_fq_codel sch_ingress cls_fw cls_matchall act_connmark a
     sudo modprobe "$m" && echo "$m" | sudo tee -a /etc/modules-load.d/spiritus.conf >/dev/null
 done
 
-sudo git clone https://github.com/w59520760-sketch/Spiritus.git /opt/v7lthronyx
+sudo git clone https://github.com/v7lthronyx1/Spiritus.git /opt/v7lthronyx
 cd /opt/v7lthronyx
 python3 -m venv venv
 source venv/bin/activate
@@ -299,7 +299,7 @@ specific features degrade until it's healthy.
 ## 📞 Support
 
 - Documentation: [README.md](README.md), [docs/](docs/)
-- Issues: https://github.com/w59520760-sketch/Spiritus/issues
+- Issues: https://github.com/v7lthronyx1/Spiritus/issues
 
 ---
 
